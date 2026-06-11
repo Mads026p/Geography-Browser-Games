@@ -690,6 +690,7 @@ const state = {
     position: null,
     tangent: null,
     paused: false,
+    visualBank: 0,
     trail: [],
     showTrail: false,
     optionsOpen: false,
@@ -1071,6 +1072,7 @@ function resetModeSession(mode) {
     state.flight.boost = false;
     state.flight.slow = false;
     state.flight.paused = false;
+    state.flight.visualBank = 0;
     state.flight.trail = [];
     state.flight.cameraBlend = 0;
     window.planeRenderer?.setVisible(false);
@@ -1516,6 +1518,7 @@ function setupAirports() {
   state.flight.lastFrame = performance.now();
   state.flight.cameraBlend = 1;
   state.flight.paused = false;
+  state.flight.visualBank = 0;
   state.flight.trail = [{ lat: startAirport.lat, lon: startAirport.lon }];
   initializeFlightCourse();
   updateFlightCamera(true);
@@ -2600,6 +2603,7 @@ function toggleFlight() {
     state.flight.cameraBlend = 0;
     state.flight.chaseZoom = 1.45;
     state.flight.paused = false;
+    state.flight.visualBank = 0;
     state.flight.trail = [{ lat: state.flight.lat, lon: state.flight.lon }];
     initializeFlightCourse();
     updateFlightCamera(true);
@@ -2610,6 +2614,7 @@ function toggleFlight() {
     state.flight.boost = false;
     state.flight.slow = false;
     state.flight.paused = false;
+    state.flight.visualBank = 0;
     state.flight.trail = [];
     state.flight.cameraBlend = 0;
     state.flight.position = null;
@@ -2637,6 +2642,11 @@ function updateFlight() {
   flight.tangent = normalizeTangent(flight.tangent, flight.position);
   const targetSpeed = flight.boost ? flight.speeds.boost : flight.slow ? flight.speeds.slow : flight.speeds.base;
   flight.currentSpeed += (targetSpeed - flight.currentSpeed) * clamp(elapsedSeconds * 2.6, 0, 1);
+  flight.visualBank = window.GeoSphereFlightRendering.approachBank(
+    flight.visualBank,
+    window.GeoSphereFlightRendering.bankTargetForTurn(flight.turn),
+    elapsedSeconds,
+  );
   const traveledKm = flight.currentSpeed * elapsedHours;
   flight.totalDistance += traveledKm;
   const step = traveledKm / (6371 + flight.altitude);
@@ -2737,6 +2747,12 @@ function projectedFlightPosition() {
   };
 }
 
+function projectedFlightTangent() {
+  const tangent = flightVectorToProjectionBasis(state.flight.tangent);
+  if (state.freeMatrix) return applyMatrix3(state.freeMatrix, tangent);
+  return { x: 0, y: 1, z: 0 };
+}
+
 function drawFlightPlane(cx, cy, radius) {
   const planePoint = projectedFlightPosition();
   const surface = {
@@ -2745,11 +2761,13 @@ function drawFlightPlane(cx, cy, radius) {
   };
   if (!surface.visible) return;
   const plane = { x: surface.x, y: surface.y };
-  const angle = -Math.PI / 2;
+  const heading = window.GeoSphereFlightRendering.screenHeadingForTangent(projectedFlightTangent());
+  const bank = state.flight.visualBank;
   const renderedModel = window.planeRenderer?.update({
     x: plane.x,
     y: plane.y,
-    bank: state.flight.turn,
+    heading,
+    bank,
     boost: state.flight.boost,
     paused: state.flight.paused,
     zoom: state.flight.chaseZoom,
@@ -2760,11 +2778,12 @@ function drawFlightPlane(cx, cy, radius) {
   ctx.globalAlpha = 0.3;
   ctx.fillStyle = "#000";
   ctx.beginPath();
-  ctx.ellipse(surface.x, surface.y, 18, 7, angle, 0, Math.PI * 2);
+  ctx.ellipse(surface.x, surface.y, 18, 7, heading - Math.PI / 2, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
   ctx.translate(plane.x, plane.y);
-  ctx.rotate(angle + Math.PI / 2);
+  ctx.rotate(heading);
+  ctx.scale(Math.max(0.58, Math.cos(bank)), 1);
   const bodyGradient = ctx.createLinearGradient(-17, 0, 17, 0);
   bodyGradient.addColorStop(0, "#82909d");
   bodyGradient.addColorStop(0.42, "#f7fbff");

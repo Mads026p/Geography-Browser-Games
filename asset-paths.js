@@ -6,6 +6,7 @@
   const assets = Object.freeze({
     scripts: Object.freeze({
       support: "app-support.js",
+      flightRendering: "flight-rendering.js",
       data: Object.freeze([
         "assets/data/custom.geo.js",
         "assets/data/country-game-data.js",
@@ -35,6 +36,7 @@
     runtimeScripts() {
       return [
         this.scripts.support,
+        this.scripts.flightRendering,
         ...this.scripts.data,
         this.scripts.triangulation,
         this.scripts.app,

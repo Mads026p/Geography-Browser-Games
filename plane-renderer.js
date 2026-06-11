@@ -22,7 +22,10 @@ scene.add(sun);
 
 const aircraft = new THREE.Group();
 aircraft.visible = false;
-scene.add(aircraft);
+const headingPivot = new THREE.Group();
+headingPivot.add(aircraft);
+scene.add(headingPivot);
+const cameraAxis = new THREE.Vector3();
 
 let loaded = false;
 let viewportSize = 116;
@@ -71,7 +74,7 @@ window.planeRenderer = {
       renderer.clear();
     }
   },
-  update({ x, y, bank = 0, boost = false, paused = false, zoom = 1, viewAngle = 45 }) {
+  update({ x, y, heading = 0, bank = 0, boost = false, paused = false, zoom = 1, viewAngle = 45 }) {
     if (!loaded) return false;
     const { width, height } = resize();
     viewportSize = 108 * zoom;
@@ -80,7 +83,7 @@ window.planeRenderer = {
     renderer.setViewport(left, bottom, viewportSize, viewportSize);
     renderer.setScissor(left, bottom, viewportSize, viewportSize);
     renderer.setScissorTest(true);
-    aircraft.rotation.y = -bank * 0.34;
+    aircraft.rotation.y = -bank;
     aircraft.rotation.z = 0;
     aircraft.position.z = 0;
     const angle = THREE.MathUtils.degToRad(viewAngle);
@@ -88,6 +91,8 @@ window.planeRenderer = {
     camera.position.set(0, -Math.cos(angle) * orbitRadius, Math.sin(angle) * orbitRadius);
     camera.up.set(0, Math.sin(angle), Math.cos(angle));
     camera.lookAt(0, 0, 0);
+    camera.getWorldDirection(cameraAxis);
+    headingPivot.setRotationFromAxisAngle(cameraAxis, -heading);
     sun.intensity = boost ? 4.4 : 3.2;
     canvas.classList.add("active");
     renderer.render(scene, camera);

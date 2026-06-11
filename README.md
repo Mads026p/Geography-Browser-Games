@@ -61,6 +61,7 @@ Double-click `run-public.bat`, keep its terminal window open, and use the displa
 |-- asset-paths.js             Canonical runtime and source asset paths
 |-- bootstrap.js               Ordered browser asset loader
 |-- app-support.js             Safe storage, aliases, and startup diagnostics
+|-- flight-rendering.js        Plane heading and banking math
 |-- app.js                     Current application, modes, and 2D globe renderer
 |-- plane-renderer.js          Optional Three.js plane overlay
 |-- assets/
