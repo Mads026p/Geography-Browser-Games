@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeoSphere</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Game modes">
+        <div class="brand">
+          <span class="brand-mark">GS</span>
+          <div>
+            <h1>GeoSphere</h1>
+            <p>World games lab</p>
+          </div>
+        </div>
+
+        <nav class="mode-list" aria-label="Choose game mode">
+          <button class="mode-card active" data-mode="free">
+            <span class="mode-icon">FR</span>
+            <span>
+              <strong>Freeroam</strong>
+              <small>Inspect and compare countries</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="hunt">
+            <span class="mode-icon">GH</span>
+            <span>
+              <strong>Globe Hunt</strong>
+              <small>Find countries on the globe</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="distance">
+            <span class="mode-icon">DD</span>
+            <span>
+              <strong>Distance Duel</strong>
+              <small>Guess country distances</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="flags">
+            <span class="mode-icon">FS</span>
+            <span>
+              <strong>Flag Sprint</strong>
+              <small>Name the flag quickly</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="trivia">
+            <span class="mode-icon">TA</span>
+            <span>
+              <strong>Trivia Atlas</strong>
+              <small>Capitals, regions, facts</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="outline">
+            <span class="mode-icon">OT</span>
+            <span>
+              <strong>Outline Twist</strong>
+              <small>Guess the rotated outline</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="viewfinder">
+            <span class="mode-icon">VF</span>
+            <span>
+              <strong>Viewfinder</strong>
+              <small>Recognize a borderless globe view</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="airports">
+            <span class="mode-icon">AP</span>
+            <span>
+              <strong>Airport Run</strong>
+              <small>Fly to the target airport</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="language">
+            <span class="mode-icon">GL</span>
+            <span>
+              <strong>Guess Language</strong>
+              <small>Identify translated sentences</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="traverse">
+            <span class="mode-icon">CT</span>
+            <span>
+              <strong>Country Traversing</strong>
+              <small>Build a route across land borders</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="conquest">
+            <span class="mode-icon">GC</span>
+            <span>
+              <strong>Globe Conquest</strong>
+              <small>Turn-based geographic strategy</small>
+            </span>
+          </button>
+          <button class="mode-card" data-mode="puzzle">
+            <span class="mode-icon">CP</span>
+            <span>
+              <strong>Continent Puzzle</strong>
+              <small>Place countries into continents</small>
+            </span>
+          </button>
+        </nav>
+
+        <section class="score-panel" aria-label="Session score">
+          <div>
+            <span>Score</span>
+            <strong id="score">0</strong>
+          </div>
+          <div>
+            <span>Streak</span>
+            <strong id="streak">0</strong>
+          </div>
+          <div>
+            <span>Best</span>
+            <strong id="best">0</strong>
+          </div>
+        </section>
+      </aside>
+
+      <main class="stage">
+        <section class="topbar" aria-label="Current challenge">
+          <div>
+            <p id="mode-kicker">Globe Hunt</p>
+            <h2 id="challenge-title">Find Japan</h2>
+          </div>
+          <div class="round-actions">
+            <label class="auto-next-control" id="auto-next-control">
+              <input type="checkbox" id="auto-next">
+              <span>Auto next</span>
+            </label>
+            <button class="primary-button secondary-button" id="reset-view" title="Reset globe view" aria-label="Reset globe view">Reset Globe (r)</button>
+            <button class="primary-button" id="next-round">Next (n)</button>
+          </div>
+        </section>
+
+        <section class="game-grid">
+          <div class="globe-zone">
+            <canvas id="globe" width="900" height="900" aria-label="Interactive globe"></canvas>
+            <canvas id="plane-overlay" aria-hidden="true"></canvas>
+            <div class="globe-controls" aria-label="Globe overlays">
+              <button class="toggle-button" id="toggle-equator" aria-pressed="false">Equator</button>
+              <button class="toggle-button" id="toggle-greenwich" aria-pressed="false">Greenwich</button>
+            </div>
+            <div class="globe-hud">
+              <span id="hover-label">Drag to rotate, wheel to zoom</span>
+              <span id="target-distance">0 km</span>
+            </div>
+            <div class="water-info-popup" id="water-info-popup" hidden></div>
+          </div>
+
+          <section class="play-panel" aria-live="polite">
+            <div id="mode-content"></div>
+            <div class="feedback" id="feedback">Pick an answer to begin.</div>
+          </section>
+        </section>
+
+      </main>
+    </div>
+
+    <script src="assets/data/custom.geo.js"></script>
+    <script src="assets/data/country-game-data.js"></script>
+    <script src="assets/data/airport-data.js"></script>
+    <script src="assets/data/timezones.geo.js"></script>
+    <script src="assets/vendor/earcut.min.js"></script>
+    <script src="app.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="plane-renderer.js"></script>
+  </body>
+</html>
