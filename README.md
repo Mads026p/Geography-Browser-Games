@@ -58,6 +58,9 @@ Double-click `run-public.bat`, keep its terminal window open, and use the displa
 .
 |-- index.html                 Main page and mode navigation
 |-- styles.css                 Application styles
+|-- asset-paths.js             Canonical runtime and source asset paths
+|-- bootstrap.js               Ordered browser asset loader
+|-- app-support.js             Safe storage, aliases, and startup diagnostics
 |-- app.js                     Current application, modes, and 2D globe renderer
 |-- plane-renderer.js          Optional Three.js plane overlay
 |-- assets/
@@ -66,6 +69,7 @@ Double-click `run-public.bat`, keep its terminal window open, and use the displa
 |   |-- Country silhouettes/   Source outline assets; audit before cleanup
 |   |-- plane/                 Plane model assets
 |   `-- vendor/                Browser-side third-party code
+|-- tests/                     Node tests for safety and asset helpers
 |-- tools/                     Local server and data/audit scripts
 |-- DEVELOPMENT.md             Development workflow and smoke tests
 |-- ASSET_PIPELINE.md          Asset rules and cleanup process

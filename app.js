@@ -704,9 +704,13 @@ const state = {
 
 function init() {
   showStartupWarnings([
+    ...(window.GEOSPHERE_BOOT_WARNINGS || []),
     ...runtimeWarnings,
     ...window.GeoSphereSupport.buildStartupWarnings(window),
   ]);
+  window.addEventListener("geosphere:startup-warning", (event) => {
+    showStartupWarnings([event.detail]);
+  });
   bindEvents();
   resetGlobeView();
   newRound("free");
@@ -6031,7 +6035,7 @@ function flagImage(country, alt) {
 
 function localIsoFlagPath(country) {
   if (!country.iso2) return "";
-  return `assets/Country Flags/svg/${country.iso2.toLowerCase()}.svg`;
+  return window.GeoSphereAssets.flag(country.iso2);
 }
 
 function escapeAttribute(value) {

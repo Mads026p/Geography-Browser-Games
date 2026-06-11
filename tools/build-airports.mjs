@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import vm from "node:vm";
+import assets from "../asset-paths.js";
 
 const context = { window: {} };
-vm.runInNewContext(readFileSync("assets/data/country-game-data.js", "utf8"), context);
+vm.runInNewContext(readFileSync(assets.scripts.data[1], "utf8"), context);
 const countries = context.window.COUNTRY_GAME_DATA;
 
 function parseCsv(line) {
@@ -37,7 +38,7 @@ const aliases = {
   "Palestine": "Palestine",
 };
 
-const airports = readFileSync("assets/data/airports.dat", "utf8")
+const airports = readFileSync(assets.sources.airports, "utf8")
   .trim()
   .split(/\r?\n/)
   .map(parseCsv)
@@ -66,4 +67,4 @@ for (const country of countries) {
   mapped[country.iso2] = closest;
 }
 
-writeFileSync("assets/data/airport-data.js", `window.AIRPORT_DATA=${JSON.stringify(mapped)};\n`);
+writeFileSync(assets.scripts.data[2], `window.AIRPORT_DATA=${JSON.stringify(mapped)};\n`);

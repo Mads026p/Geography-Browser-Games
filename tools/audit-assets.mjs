@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, extname, relative, resolve, sep } from "node:path";
+import assets from "../asset-paths.js";
 
 const root = resolve(import.meta.dirname, "..");
 const assetsRoot = resolve(root, "assets");
@@ -49,7 +50,7 @@ const allowedBlock = appSource.match(/const allowedCountryNames = new Set\(\[(.*
 const allowedNames = allowedBlock
   ? [...allowedBlock[1].matchAll(/"([^"]+)"/g)].map((match) => match[1])
   : [];
-const countryData = JSON.parse(readFileSync(resolve(assetsRoot, "data", "country-game-data.json"), "utf8"));
+const countryData = JSON.parse(readFileSync(resolve(root, assets.sources.countryData), "utf8"));
 const normalizeKey = (value) =>
   String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const countryByKey = new Map(countryData.map((country) => [normalizeKey(country.name), country]));
@@ -59,7 +60,7 @@ if (!countryByKey.has("antarctica")) {
 const expectedFlags = allowedNames
   .map((name) => countryByKey.get(normalizeKey(name)))
   .filter(Boolean)
-  .map((country) => `assets/Country Flags/svg/${String(country.iso2).toLowerCase()}.svg`);
+  .map((country) => assets.flag(country.iso2));
 
 const knownDynamicAssets = new Set(expectedFlags);
 const directlyReferencedAssets = new Set(

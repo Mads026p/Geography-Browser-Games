@@ -87,6 +87,6 @@ test("startup diagnostics are empty when required globals are populated", () => 
     CUSTOM_COUNTRIES_GEOJSON: { features: [{}] },
     AIRPORT_DATA: { DK: [{}] },
     TIMEZONE_BOUNDARIES_GEOJSON: { features: [{}] },
-    earcut() {},
+    earcut: { default() {} },
   }), []);
 });

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import assets from "../asset-paths.js";
 
 const root = resolve(import.meta.dirname, "..");
 const errors = [];
@@ -41,7 +42,7 @@ const allowedKeys = new Set(allowedNames.map(normalizeKey));
 let countries = [];
 let geojson = null;
 try {
-  countries = JSON.parse(readText("assets/data/country-game-data.json"));
+  countries = JSON.parse(readText(assets.sources.countryData));
   if (!Array.isArray(countries)) throw new Error("Root value is not an array.");
   if (!countries.some((country) => normalizeKey(country.name) === "antarctica")) {
     countries.push({
@@ -59,7 +60,7 @@ try {
   errors.push(`Could not parse country-game-data.json: ${error.message}`);
 }
 try {
-  geojson = JSON.parse(readText("assets/data/custom.geo.json"));
+  geojson = JSON.parse(readText(assets.sources.countryGeometry));
   if (!Array.isArray(geojson?.features)) throw new Error("FeatureCollection has no features array.");
 } catch (error) {
   errors.push(`Could not parse custom.geo.json: ${error.message}`);
@@ -84,9 +85,10 @@ for (const country of gameCountries) {
     errors.push(`${country.name}: invalid capital longitude "${country.lon}".`);
   }
   const iso2 = String(country.iso2 || "").toLowerCase();
-  const flagPath = resolve(root, "assets", "Country Flags", "svg", `${iso2}.svg`);
+  const expectedFlag = assets.flag(iso2);
+  const flagPath = resolve(root, expectedFlag);
   if (!/^[a-z]{2}$/.test(iso2) || !existsSync(flagPath)) {
-    errors.push(`${country.name}: missing expected flag assets/Country Flags/svg/${iso2 || "<missing>"}.svg.`);
+    errors.push(`${country.name}: missing expected flag ${expectedFlag || "<missing ISO code>"}.`);
   }
 }
 

@@ -28,7 +28,7 @@ let loaded = false;
 let viewportSize = 116;
 
 new GLTFLoader().load(
-  "assets/plane/medium_haul_plane_low_poly.glb",
+  window.GeoSphereAssets.plane.model,
   (gltf) => {
     const model = gltf.scene;
     const box = new THREE.Box3().setFromObject(model);

@@ -1,6 +1,9 @@
 # Data Sources
 
-- `world-countries.geojson` and `world-countries.js` are from Natural Earth Admin 0 country boundaries via the public `natural-earth-vector` repository.
-- `world-countries.js` wraps the same GeoJSON as `window.WORLD_COUNTRIES_GEOJSON` so the game works when `index.html` is opened directly from disk.
+- `custom.geo.json` is the canonical country-boundary source used by validation and tooling.
+- `custom.geo.js` wraps the same data as `window.CUSTOM_COUNTRIES_GEOJSON` for the browser runtime.
+- `country-game-data.json` is the canonical country metadata source; `country-game-data.js` is its browser wrapper.
+- `timezones.geojson` is the canonical time-zone boundary source; `timezones.geo.js` is its browser wrapper.
+- `airports.dat` is the source used by `tools/build-airports.mjs` to generate `airport-data.js`.
 
-Worldometers country statistics and offline flag downloads can be added as a separate data-import step.
+Runtime and source paths are centralized in `asset-paths.js`.

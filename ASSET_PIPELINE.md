@@ -12,6 +12,12 @@ Do not delete, rename, move, or regenerate an asset until all of these have been
 
 The audit script reports candidates only. It never deletes files.
 
+## Canonical paths
+
+Runtime and source asset locations are defined in `asset-paths.js`.
+
+Browser bootstrap, flag lookup, plane loading, validation, airport generation, and asset auditing use this manifest. Add or move a runtime asset by updating the manifest first, then run the full validation and audit commands.
+
 ## Flags
 
 Current location:
@@ -100,3 +106,17 @@ node tools/audit-assets.mjs --write
 ```
 
 The optional `--write` form creates `reports/asset-audit.json`. Review `missingReferences`, `dynamicAssets`, and `likelyUnused` before proposing cleanup. False positives are expected for assets loaded through generated paths.
+
+## Batch 3 cleanup record
+
+Removed on June 11, 2026 after direct search, manifest validation, and audit review:
+
+- `assets/images/Earth_map_8k.jpg`: unused texture from the abandoned photographic Viewfinder experiment.
+- `assets/data/world-countries.js`: obsolete browser wrapper superseded by `assets/data/custom.geo.js`.
+- `assets/data/world-countries.geojson`: obsolete source dataset superseded by `assets/data/custom.geo.json`.
+
+Retained deliberately:
+
+- All country silhouettes, because they remain valuable source assets for outline modes.
+- All SVG flags and the upstream metadata/build files, because they preserve provenance and support future flag updates.
+- `assets/plane/737-700.blend`, because it is the editable source counterpart to the runtime GLB model.

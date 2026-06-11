@@ -117,7 +117,7 @@
     if (!Array.isArray(runtime.TIMEZONE_BOUNDARIES_GEOJSON?.features) || runtime.TIMEZONE_BOUNDARIES_GEOJSON.features.length === 0) {
       warnings.push("Time zone data did not load; the time zone overlay may be unavailable.");
     }
-    if (typeof runtime.earcut !== "function") {
+    if (typeof runtime.earcut !== "function" && typeof runtime.earcut?.default !== "function") {
       warnings.push("The polygon triangulation library did not load; country rendering may be incomplete.");
     }
     return warnings;
