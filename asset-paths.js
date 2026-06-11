@@ -7,6 +7,7 @@
     scripts: Object.freeze({
       support: "app-support.js",
       flightRendering: "flight-rendering.js",
+      globeRendering: "globe-rendering.js",
       data: Object.freeze([
         "assets/data/custom.geo.js",
         "assets/data/country-game-data.js",
@@ -37,6 +38,7 @@
       return [
         this.scripts.support,
         this.scripts.flightRendering,
+        this.scripts.globeRendering,
         ...this.scripts.data,
         this.scripts.triangulation,
         this.scripts.app,

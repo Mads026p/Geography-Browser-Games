@@ -11,6 +11,7 @@ test("canonical runtime asset paths point to existing files", () => {
   const paths = [
     assets.scripts.support,
     assets.scripts.flightRendering,
+    assets.scripts.globeRendering,
     ...assets.scripts.data,
     assets.scripts.triangulation,
     assets.scripts.app,
@@ -36,6 +37,7 @@ test("runtime script order loads support and data before the app", () => {
   assert.deepEqual(assets.runtimeScripts(), [
     "app-support.js",
     "flight-rendering.js",
+    "globe-rendering.js",
     "assets/data/custom.geo.js",
     "assets/data/country-game-data.js",
     "assets/data/airport-data.js",

@@ -670,6 +670,11 @@ const state = {
   puzzle: null,
   globeFrame: null,
   renderDirty: true,
+  interactionUntil: 0,
+  interactionTimer: null,
+  renderPolicy: null,
+  renderCache: { key: "", visibleTiles: new WeakMap() },
+  labelBoxes: [],
   flight: {
     active: false,
     lat: 51.16,
@@ -795,6 +800,8 @@ function bindEvents() {
       event.preventDefault();
       rolling = true;
       dragging = false;
+      state.dragging = true;
+      markGlobeInteraction();
       lastX = event.clientX;
       canvas.setPointerCapture(event.pointerId);
       return;
@@ -802,6 +809,7 @@ function bindEvents() {
     if (event.button !== 0) return;
     dragging = true;
     state.dragging = true;
+    markGlobeInteraction();
     state.hover = null;
     lastX = event.clientX;
     lastY = event.clientY;
@@ -812,12 +820,14 @@ function bindEvents() {
 
   canvas.addEventListener("pointermove", (event) => {
     if (rolling) {
+      markGlobeInteraction();
       const dx = event.clientX - lastX;
       state.freeMatrix = orthonormalizeMatrix3(
         multiplyMatrix3(rotationMatrixZ(dx * 0.008), state.freeMatrix || cameraMatrixForEuler(state.yaw, state.pitch, state.roll)),
       );
       lastX = event.clientX;
     } else if (dragging) {
+      markGlobeInteraction();
       const dx = event.clientX - lastX;
       const dy = event.clientY - lastY;
       if (Math.hypot(dx, dy) > 1) state.suppressNextClick = true;
@@ -852,6 +862,7 @@ function bindEvents() {
     dragging = false;
     rolling = false;
     state.dragging = false;
+    markGlobeInteraction(90);
     grabbedGeo = null;
     canvas.releasePointerCapture(event.pointerId);
   });
@@ -936,6 +947,7 @@ function bindEvents() {
       } else {
         state.zoom = clamp(state.zoom * Math.exp(-event.deltaY * 0.0018), 0.72, 32);
       }
+      markGlobeInteraction();
       requestGlobeRender();
     },
     { passive: false },
@@ -1039,6 +1051,15 @@ function requestGlobeRender() {
   if (!usesGlobe(state.mode)) return;
   state.renderDirty = true;
   if (state.globeFrame === null) state.globeFrame = requestAnimationFrame(draw);
+}
+
+function markGlobeInteraction(duration = 180) {
+  state.interactionUntil = performance.now() + duration;
+  if (state.interactionTimer !== null) window.clearTimeout(state.interactionTimer);
+  state.interactionTimer = window.setTimeout(() => {
+    state.interactionTimer = null;
+    requestGlobeRender();
+  }, duration + 20);
 }
 
 function stopGlobeLoop() {
@@ -3618,6 +3639,24 @@ function draw() {
   document.querySelector("#reset-view").disabled = state.flight.active && !state.flight.paused;
   const { width, height, radius, cx, cy } = globeMetrics();
   const traversePuzzle = state.mode === "traverse" && !state.answered;
+  state.renderPolicy = window.GeoSphereGlobeRendering.renderPolicy({
+    dragging: state.dragging,
+    zooming: performance.now() < state.interactionUntil,
+  });
+  const cacheKey = window.GeoSphereGlobeRendering.createViewCacheKey({
+    yaw: state.yaw,
+    pitch: state.pitch,
+    roll: state.roll,
+    zoom: radius,
+    width,
+    height,
+    northUp: state.northUp,
+    matrix: state.freeMatrix,
+  });
+  if (state.renderCache.key !== cacheKey) {
+    state.renderCache = { key: cacheKey, visibleTiles: new WeakMap() };
+  }
+  state.labelBoxes = [];
 
   ctx.clearRect(0, 0, width, height);
   drawStars(width, height);
@@ -3973,7 +4012,7 @@ function drawCountries(cx, cy, radius) {
     worldMap.forEach((feature) => drawTerrainSurface(feature, cx, cy, radius));
     if (state.viewShowBorders) {
       worldMap.forEach((feature) => {
-        if (feature.renderTiles.some((tile) => tileIsVisible(tile, cx, cy, radius))) {
+        if (visibleTilesFor(feature.renderTiles, cx, cy, radius).length) {
           drawFeatureBoundarySegments(feature, cx, cy, radius, false);
         }
       });
@@ -4014,7 +4053,7 @@ function drawCountries(cx, cy, radius) {
     ) {
       return;
     }
-    if (!feature.renderTiles.some((tile) => tileIsVisible(tile, cx, cy, radius))) return;
+    if (!visibleTilesFor(feature.renderTiles, cx, cy, radius).length) return;
     const isTarget =
       (state.mode === "hunt" && state.answered && sameCountry(feature, state.target)) ||
       (state.mode === "traverse" && sameCountry(feature, state.traverse.target));
@@ -4065,7 +4104,9 @@ function drawCountries(cx, cy, radius) {
                   : base);
     drawFeatureSurface(feature, cx, cy, radius);
     ctx.globalAlpha = 1;
-    drawFeatureBoundarySegments(feature, cx, cy, radius, highlighted, isTraverseHint);
+    if (state.renderPolicy.drawMinorBoundaries || highlighted) {
+      drawFeatureBoundarySegments(feature, cx, cy, radius, highlighted, isTraverseHint);
+    }
   });
   ctx.restore();
 }
@@ -4092,11 +4133,10 @@ function drawViewfinderFrame(cx, cy, radius) {
 }
 
 function drawTerrainSurface(feature, cx, cy, radius) {
-  const terrainTiles = state.viewAltitude <= 1_600 && feature.terrainTilesFine
+  const terrainTiles = state.renderPolicy.terrainDetail === "fine" && state.viewAltitude <= 1_600 && feature.terrainTilesFine
     ? feature.terrainTilesFine
     : feature.terrainTiles;
-  terrainTiles.forEach((tile) => {
-    if (!tileIsVisible(tile, cx, cy, radius)) return;
+  visibleTilesFor(terrainTiles, cx, cy, radius).forEach((tile) => {
     tile.triangles.forEach((triangle) => {
       const clipped = clipRingToVisible(triangle.map(cameraVector));
       if (clipped.length < 3) return;
@@ -4344,7 +4384,7 @@ function continentForCountry(country) {
 
 function drawCountryNameLabels(cx, cy, radius) {
   const traverseHover = state.mode === "traverse" && state.answered && state.hover;
-  if (!traverseHover && (state.mode !== "free" || !state.showCountryNames)) return;
+  if (!state.renderPolicy.drawLabels || (!traverseHover && (state.mode !== "free" || !state.showCountryNames))) return;
   ctx.save();
   ctx.textAlign = "center";
   ctx.font = `${clamp(10 + state.zoom * 1.4, 10, 15)}px Inter, sans-serif`;
@@ -4353,6 +4393,12 @@ function drawCountryNameLabels(cx, cy, radius) {
     const point = project(feature.labelLat, feature.labelLon, cx, cy, radius);
     if (!point.visible || point.z < 0.18) return;
     const label = displayCountryName(feature);
+    const width = ctx.measureText(label).width;
+    if (!window.GeoSphereGlobeRendering.placeLabel(
+      { x: point.x, y: point.y, width, height: 16 },
+      state.labelBoxes,
+      3,
+    )) return;
     ctx.lineWidth = 3;
     ctx.strokeStyle = "rgba(5,10,16,0.88)";
     ctx.fillStyle = "rgba(247,251,255,0.92)";
@@ -4389,6 +4435,7 @@ function drawWaterLabels(cx, cy, radius) {
     !usesGlobe(state.mode) ||
     state.mode === "viewfinder" ||
     (state.mode === "traverse" && !state.answered) ||
+    !state.renderPolicy.drawLabels ||
     state.zoom < 0.75
   ) return;
   const labels = [...majorWaterLabels, ...(state.mode === "free" && state.showWaterBodies ? minorWaterLabels : [])];
@@ -4399,6 +4446,11 @@ function drawWaterLabels(cx, cy, radius) {
     const point = project(label.lat, label.lon, cx, cy, radius);
     if (!point.visible || point.z < 0.2) return;
     const width = ctx.measureText(label.name).width;
+    if (!window.GeoSphereGlobeRendering.placeLabel(
+      { x: point.x, y: point.y, width, height: 18 },
+      state.labelBoxes,
+      4,
+    )) return;
     state.visibleWaterLabels.push({ ...label, x: point.x, y: point.y, width, height: 18 });
     ctx.lineWidth = 3;
     ctx.strokeStyle = "rgba(4,17,30,0.82)";
@@ -4499,8 +4551,7 @@ function drawAirportCompass(width, height) {
 function drawFeatureSurface(feature, cx, cy, radius) {
   ctx.beginPath();
   const tiles = state.mode === "traverse" ? feature.metropolitanRenderTiles : feature.renderTiles;
-  tiles.forEach((tile) => {
-    if (!tileIsVisible(tile, cx, cy, radius)) return;
+  visibleTilesFor(tiles, cx, cy, radius).forEach((tile) => {
     tile.triangles.forEach((triangle) => {
       const clipped = clipRingToVisible(triangle.map(cameraVector));
       if (clipped.length < 3) return;
@@ -4513,6 +4564,14 @@ function drawFeatureSurface(feature, cx, cy, radius) {
     });
   });
   ctx.fill();
+}
+
+function visibleTilesFor(tiles, cx, cy, radius) {
+  const cached = state.renderCache.visibleTiles.get(tiles);
+  if (cached) return cached;
+  const visible = tiles.filter((tile) => tileIsVisible(tile, cx, cy, radius));
+  state.renderCache.visibleTiles.set(tiles, visible);
+  return visible;
 }
 
 function tileIsVisible(tile, cx, cy, radius) {
@@ -4765,10 +4824,12 @@ function drawElevationOverlay(cx, cy, radius) {
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.clip();
   worldMap.forEach((feature) => {
-    const tiles = feature.terrainTilesFine || feature.terrainTiles;
+    const tiles =
+      state.renderPolicy.terrainDetail === "fine"
+        ? feature.terrainTilesFine || feature.terrainTiles
+        : feature.terrainTiles;
     if (!tiles) return;
-    tiles.forEach((tile) => {
-      if (!tileIsVisible(tile, cx, cy, radius)) return;
+    visibleTilesFor(tiles, cx, cy, radius).forEach((tile) => {
       tile.triangles.forEach((triangle) => {
         const clipped = clipRingToVisible(triangle.map(cameraVector));
         if (clipped.length < 3) return;
