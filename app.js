@@ -234,6 +234,16 @@ const countries = countrySource
     flag: localIsoFlagPath(country) || country.flag || countryFlagsUrl(country),
   }));
 
+const runtimeWarnings = [];
+const safeStorage = window.GeoSphereSupport.createSafeStorage(
+  () => window.localStorage,
+  (warning) => {
+    runtimeWarnings.push(warning);
+    console.warn(warning);
+  },
+);
+const savedMarkers = safeStorage.getJson("geosphere-markers", []);
+
 const stage = document.querySelector(".stage");
 
 const countryAliases = new Map([
@@ -570,7 +580,7 @@ const state = {
   gameScores: Object.fromEntries(
     ["free", "hunt", "distance", "flags", "trivia", "outline", "viewfinder", "airports", "language", "traverse", "conquest", "puzzle"].map((mode) => [
       mode,
-      { score: 0, streak: 0, best: Number(localStorage.getItem(`geosphere-best-${mode}`) || 0) },
+      { score: 0, streak: 0, best: safeStorage.getNumber(`geosphere-best-${mode}`, 0) },
     ]),
   ),
   yaw: -0.7,
@@ -595,8 +605,8 @@ const state = {
   languageOptionsOpen: false,
   languageOptionsPinned: false,
   languageContinents: ["Europe", "Asia", "Africa", "North America", "South America", "Oceania"],
-  northUp: localStorage.getItem("geosphere-north-up") !== "false",
-  markers: JSON.parse(localStorage.getItem("geosphere-markers") || "[]"),
+  northUp: safeStorage.getBoolean("geosphere-north-up", true),
+  markers: Array.isArray(savedMarkers) ? savedMarkers : [],
   activeLandmark: null,
   timezoneBoundaries: null,
   timezoneGrid: null,
@@ -617,7 +627,7 @@ const state = {
   triviaDeck: [],
   triviaTypeQueue: [],
   lastTriviaType: "",
-  autoNext: localStorage.getItem("geosphere-auto-next") === "true",
+  autoNext: safeStorage.getBoolean("geosphere-auto-next", false),
   autoNextTimer: null,
   flagHard: false,
   flagReveal: 0,
@@ -634,7 +644,7 @@ const state = {
   viewWrongCountry: null,
   viewGuessCorrect: null,
   viewFocusGuess: false,
-  viewHardStart: localStorage.getItem("geosphere-view-hard") === "true",
+  viewHardStart: safeStorage.getBoolean("geosphere-view-hard", false),
   viewHardInitialized: false,
   viewFrameCorners: [],
   viewFrameOutline: false,
@@ -693,6 +703,10 @@ const state = {
 };
 
 function init() {
+  showStartupWarnings([
+    ...runtimeWarnings,
+    ...window.GeoSphereSupport.buildStartupWarnings(window),
+  ]);
   bindEvents();
   resetGlobeView();
   newRound("free");
@@ -700,12 +714,29 @@ function init() {
   startGlobeLoop();
 }
 
+function showStartupWarnings(warnings) {
+  const panel = document.querySelector("#startup-warning");
+  const list = document.querySelector("#startup-warning-list");
+  const dismiss = document.querySelector("#dismiss-startup-warning");
+  const uniqueWarnings = [...new Set(warnings)];
+  if (!panel || !list || uniqueWarnings.length === 0) return;
+  list.replaceChildren(...uniqueWarnings.map((warning) => {
+    const item = document.createElement("li");
+    item.textContent = warning;
+    return item;
+  }));
+  panel.hidden = false;
+  dismiss?.addEventListener("click", () => {
+    panel.hidden = true;
+  }, { once: true });
+}
+
 function bindEvents() {
   const autoNext = document.querySelector("#auto-next");
   autoNext.checked = state.autoNext;
   autoNext.addEventListener("change", () => {
     state.autoNext = autoNext.checked;
-    localStorage.setItem("geosphere-auto-next", String(state.autoNext));
+    safeStorage.set("geosphere-auto-next", state.autoNext);
   });
   window.addEventListener("resize", resizeCanvas);
   document.addEventListener("click", requestGlobeRender);
@@ -1319,7 +1350,7 @@ function setupViewfinder() {
       state.viewNextAltitude = Math.min(state.viewNextAltitude, 850);
       state.viewHardInitialized = true;
     }
-    localStorage.setItem("geosphere-view-hard", String(state.viewHardStart));
+    safeStorage.set("geosphere-view-hard", state.viewHardStart);
   });
 }
 
@@ -2375,7 +2406,7 @@ function renderFreeroamPanel() {
       state.orientationTarget = null;
       state.freeMatrix = cameraMatrixForEuler(state.yaw, state.pitch, state.roll);
     }
-    localStorage.setItem("geosphere-north-up", String(state.northUp));
+    safeStorage.set("geosphere-north-up", state.northUp);
   });
   modeContent.querySelector("#delete-markers")?.addEventListener("click", () => {
     state.markers = [];
@@ -2527,7 +2558,7 @@ function toggleFlightPause() {
 }
 
 function saveMarkers() {
-  localStorage.setItem("geosphere-markers", JSON.stringify(state.markers));
+  safeStorage.setJson("geosphere-markers", state.markers);
 }
 
 async function hydrateLandmarkDetails(marker) {
@@ -3183,7 +3214,7 @@ function setupFlags() {
 function bindFlagModeToggle() {
   modeContent.querySelector("#flag-hard").addEventListener("change", (event) => {
     state.flagHard = event.target.checked;
-    localStorage.setItem("geosphere-flag-hard", String(state.flagHard));
+    safeStorage.set("geosphere-flag-hard", state.flagHard);
     newRound("flags");
   });
 }
@@ -3514,7 +3545,7 @@ function award(points, success) {
   stat.score = Math.max(0, stat.score + points);
   stat.streak = success ? stat.streak + 1 : 0;
   stat.best = Math.max(stat.best, stat.score);
-  localStorage.setItem(`geosphere-best-${state.mode}`, stat.best);
+  safeStorage.set(`geosphere-best-${state.mode}`, stat.best);
   updateScore();
 }
 
@@ -5666,16 +5697,12 @@ function countryMatchKeys(country) {
 }
 
 function outlineSearchKeys(country) {
-  const aliases = {
-    "United States": ["usa", "us", "america", "states"],
-    "United Kingdom": ["uk", "great britain", "britain", "kingdom"],
-    "United Arab Emirates": ["uae", "emirates"],
-    "DR Congo": ["drc", "congo kinshasa", "democratic republic of the congo"],
-    "Republic of the Congo": ["congo brazzaville"],
-    "South Korea": ["korea"],
-    "North Korea": ["korea"],
-  };
-  return [...countryMatchKeys(country), ...(aliases[country.name] || []).map(rawCountryKey)];
+  const ambiguousAliases = ["South Korea", "North Korea"].includes(country.name) ? ["korea"] : [];
+  return [
+    ...countryMatchKeys(country),
+    ...window.GeoSphereSupport.countryAliasesFor(country.name),
+    ...ambiguousAliases.map(rawCountryKey),
+  ];
 }
 
 function countrySuggestions(value, limit = 9) {

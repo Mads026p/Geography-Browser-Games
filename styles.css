@@ -48,6 +48,44 @@ button {
   min-height: 0;
 }
 
+.startup-warning {
+  position: absolute;
+  z-index: 30;
+  top: 0.75rem;
+  left: 50%;
+  width: min(42rem, calc(100% - 2rem));
+  transform: translateX(-50%);
+  border: 1px solid #a97920;
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  background: #2a2418;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.startup-warning[hidden] {
+  display: none;
+}
+
+.startup-warning ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.2rem;
+  color: #f0d899;
+}
+
+.startup-warning button {
+  border: 0;
+  padding: 0.15rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
 .sidebar {
   border-right: 1px solid var(--line);
   background: rgba(16, 19, 24, 0.84);

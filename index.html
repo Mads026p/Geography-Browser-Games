@@ -121,6 +121,13 @@
       </aside>
 
       <main class="stage">
+        <aside class="startup-warning" id="startup-warning" role="status" hidden>
+          <div>
+            <strong>Some local data could not be loaded</strong>
+            <ul id="startup-warning-list"></ul>
+          </div>
+          <button type="button" id="dismiss-startup-warning" aria-label="Dismiss startup warning">&times;</button>
+        </aside>
         <section class="topbar" aria-label="Current challenge">
           <div>
             <p id="mode-kicker">Globe Hunt</p>
@@ -160,6 +167,7 @@
       </main>
     </div>
 
+    <script src="app-support.js"></script>
     <script src="assets/data/custom.geo.js"></script>
     <script src="assets/data/country-game-data.js"></script>
     <script src="assets/data/airport-data.js"></script>
