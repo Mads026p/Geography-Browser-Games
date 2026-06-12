@@ -5,6 +5,7 @@
       interacting,
       drawLabels: !interacting,
       drawMinorBoundaries: !interacting,
+      drawCountryBoundaries: true,
       terrainDetail: interacting ? "coarse" : "fine",
     };
   }

@@ -10,12 +10,14 @@ test("render policy reduces nonessential work only during direct interaction", (
     interacting: false,
     drawLabels: true,
     drawMinorBoundaries: true,
+    drawCountryBoundaries: true,
     terrainDetail: "fine",
   });
   assert.deepEqual(renderPolicy({ dragging: true, zooming: false }), {
     interacting: true,
     drawLabels: false,
     drawMinorBoundaries: false,
+    drawCountryBoundaries: true,
     terrainDetail: "coarse",
   });
   assert.equal(renderPolicy({ dragging: false, zooming: true }).interacting, true);

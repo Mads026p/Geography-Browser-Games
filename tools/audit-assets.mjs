@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, extname, relative, resolve, sep } from "node:path";
 import assets from "../asset-paths.js";
+import content from "../game-content.js";
 
 const root = resolve(import.meta.dirname, "..");
 const assetsRoot = resolve(root, "assets");
@@ -45,11 +46,7 @@ for (const sourcePath of sourceFiles) {
   }
 }
 
-const appSource = readFileSync(resolve(root, "app.js"), "utf8");
-const allowedBlock = appSource.match(/const allowedCountryNames = new Set\(\[(.*?)\]\);/s);
-const allowedNames = allowedBlock
-  ? [...allowedBlock[1].matchAll(/"([^"]+)"/g)].map((match) => match[1])
-  : [];
+const allowedNames = [...content.allowedCountryNames];
 const countryData = JSON.parse(readFileSync(resolve(root, assets.sources.countryData), "utf8"));
 const normalizeKey = (value) =>
   String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import assets from "../asset-paths.js";
+import content from "../game-content.js";
 
 const root = resolve(import.meta.dirname, "..");
 const errors = [];
@@ -28,15 +29,8 @@ function duplicateValues(items, selector) {
   return [...seen.entries()].filter(([, matches]) => matches.length > 1);
 }
 
-const appSource = readText("app.js");
 const indexSource = readText("index.html");
-const allowedBlock = appSource.match(/const allowedCountryNames = new Set\(\[(.*?)\]\);/s);
-if (!allowedBlock) {
-  errors.push("Could not read allowedCountryNames from app.js.");
-}
-const allowedNames = allowedBlock
-  ? [...allowedBlock[1].matchAll(/"([^"]+)"/g)].map((match) => match[1])
-  : [];
+const allowedNames = [...content.allowedCountryNames];
 const allowedKeys = new Set(allowedNames.map(normalizeKey));
 
 let countries = [];
@@ -53,7 +47,7 @@ try {
       region: "Antarctica",
       lat: -90,
       lon: 0,
-      validationSource: "Synthetic entry defined in app.js",
+      validationSource: "Synthetic runtime entry",
     });
   }
 } catch (error) {

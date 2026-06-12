@@ -6,6 +6,8 @@
   const assets = Object.freeze({
     scripts: Object.freeze({
       support: "app-support.js",
+      content: "game-content.js",
+      modes: "game-modes.js",
       flightRendering: "flight-rendering.js",
       globeRendering: "globe-rendering.js",
       data: Object.freeze([
@@ -37,6 +39,8 @@
     runtimeScripts() {
       return [
         this.scripts.support,
+        this.scripts.content,
+        this.scripts.modes,
         this.scripts.flightRendering,
         this.scripts.globeRendering,
         ...this.scripts.data,

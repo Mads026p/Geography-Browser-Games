@@ -10,6 +10,8 @@ const root = resolve(import.meta.dirname, "..");
 test("canonical runtime asset paths point to existing files", () => {
   const paths = [
     assets.scripts.support,
+    assets.scripts.content,
+    assets.scripts.modes,
     assets.scripts.flightRendering,
     assets.scripts.globeRendering,
     ...assets.scripts.data,
@@ -36,6 +38,8 @@ test("country-derived asset paths normalize ISO codes", () => {
 test("runtime script order loads support and data before the app", () => {
   assert.deepEqual(assets.runtimeScripts(), [
     "app-support.js",
+    "game-content.js",
+    "game-modes.js",
     "flight-rendering.js",
     "globe-rendering.js",
     "assets/data/custom.geo.js",
