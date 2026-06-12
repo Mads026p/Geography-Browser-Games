@@ -10,6 +10,8 @@ test("mode registry has unique IDs and canonical globe usage", () => {
   assert.equal(modes.get("flags").usesGlobe, false);
   assert.equal(modes.get("viewfinder").usesGlobe, true);
   assert.equal(modes.usesGlobe("outline"), false);
+  assert.equal(modes.usesGlobe("daily"), false);
+  assert.equal(modes.usesGlobe("gallery"), false);
 });
 
 test("daily challenge registry contains the five approved quick modes", () => {

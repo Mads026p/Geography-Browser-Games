@@ -18,6 +18,13 @@
         </div>
 
         <nav class="mode-list" aria-label="Choose game mode">
+          <button class="mode-card" data-mode="daily">
+            <span class="mode-icon">DC</span>
+            <span>
+              <strong>Daily Challenge</strong>
+              <small>One world tour each day</small>
+            </span>
+          </button>
           <button class="mode-card active" data-mode="free">
             <span class="mode-icon">FR</span>
             <span>
@@ -102,6 +109,13 @@
               <small>Place countries into continents</small>
             </span>
           </button>
+          <button class="mode-card" data-mode="gallery">
+            <span class="mode-icon">FG</span>
+            <span>
+              <strong>Flag Gallery</strong>
+              <small>Achievement rewards</small>
+            </span>
+          </button>
         </nav>
 
         <section class="score-panel" aria-label="Session score">
@@ -128,6 +142,7 @@
           </div>
           <button type="button" id="dismiss-startup-warning" aria-label="Dismiss startup warning">&times;</button>
         </aside>
+        <div class="achievement-stack" id="achievement-stack" aria-live="polite"></div>
         <section class="topbar" aria-label="Current challenge">
           <div>
             <p id="mode-kicker">Globe Hunt</p>

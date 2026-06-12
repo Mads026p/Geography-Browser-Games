@@ -424,6 +424,8 @@ button {
 .stage[data-mode="trivia"] .game-grid,
 .stage[data-mode="outline"] .game-grid,
 .stage[data-mode="language"] .game-grid,
+.stage[data-mode="daily"] .game-grid,
+.stage[data-mode="gallery"] .game-grid,
 .stage[data-mode="puzzle"] .game-grid {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -432,6 +434,8 @@ button {
 .stage[data-mode="trivia"] .globe-zone,
 .stage[data-mode="outline"] .globe-zone,
 .stage[data-mode="language"] .globe-zone,
+.stage[data-mode="daily"] .globe-zone,
+.stage[data-mode="gallery"] .globe-zone,
 .stage[data-mode="puzzle"] .globe-zone {
   display: none;
 }
@@ -450,6 +454,12 @@ button {
 .stage[data-mode="language"] #reset-view,
 .stage[data-mode="puzzle"] #toggle-equator,
 .stage[data-mode="puzzle"] #toggle-greenwich,
+.stage[data-mode="daily"] #toggle-equator,
+.stage[data-mode="daily"] #toggle-greenwich,
+.stage[data-mode="daily"] #reset-view,
+.stage[data-mode="gallery"] #toggle-equator,
+.stage[data-mode="gallery"] #toggle-greenwich,
+.stage[data-mode="gallery"] #reset-view,
 .stage[data-mode="puzzle"] #reset-view {
   display: none;
 }
@@ -463,10 +473,163 @@ button {
 .stage[data-mode="trivia"] .play-panel,
 .stage[data-mode="outline"] .play-panel,
 .stage[data-mode="language"] .play-panel,
+.stage[data-mode="daily"] .play-panel,
+.stage[data-mode="gallery"] .play-panel,
 .stage[data-mode="puzzle"] .play-panel {
   max-width: 48rem;
   width: min(100%, 48rem);
   justify-self: center;
+}
+
+.daily-progress {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.daily-progress span {
+  height: 0.35rem;
+  border-radius: 0.2rem;
+  background: #303844;
+}
+
+.daily-progress .complete {
+  background: var(--accent);
+}
+
+.daily-progress .current {
+  background: var(--gold);
+}
+
+.daily-meta,
+.gallery-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.daily-visual {
+  min-height: 15rem;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.9rem;
+  padding: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: #10151d;
+}
+
+.daily-visual img {
+  max-width: 85%;
+  max-height: 13rem;
+  object-fit: contain;
+}
+
+.daily-outline {
+  filter: brightness(0) saturate(100%) invert(78%) sepia(37%) saturate(721%) hue-rotate(122deg);
+}
+
+.daily-clue-card {
+  width: min(100%, 26rem);
+  text-align: center;
+}
+
+.daily-clue-card strong {
+  display: block;
+  margin-bottom: 0.65rem;
+  font-size: 1.3rem;
+}
+
+.daily-result-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 1rem 0;
+}
+
+.daily-result-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: #11161e;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+}
+
+.gallery-card {
+  min-height: 15rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: #11161e;
+}
+
+.gallery-flag {
+  height: 7rem;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.7rem;
+  overflow: hidden;
+  background: #0d1219;
+}
+
+.gallery-flag img {
+  max-width: 88%;
+  max-height: 6rem;
+  object-fit: contain;
+}
+
+.gallery-card.locked .gallery-flag {
+  color: #59636e;
+  font-size: 2.8rem;
+}
+
+.gallery-card h4,
+.gallery-card p {
+  margin: 0.3rem 0;
+}
+
+.rarity {
+  color: var(--gold);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.achievement-stack {
+  position: fixed;
+  z-index: 30;
+  top: 1rem;
+  right: 1rem;
+  width: min(22rem, calc(100vw - 2rem));
+  display: grid;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.achievement-toast {
+  padding: 0.8rem;
+  border: 1px solid rgba(240, 199, 94, 0.55);
+  border-radius: 0.5rem;
+  background: rgba(17, 22, 30, 0.96);
+  box-shadow: var(--shadow);
+}
+
+.achievement-toast strong,
+.achievement-toast span {
+  display: block;
 }
 
 .panel-title {

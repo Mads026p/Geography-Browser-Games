@@ -50,6 +50,9 @@ const safeStorage = window.GeoSphereSupport.createSafeStorage(
   },
 );
 const savedMarkers = safeStorage.getJson("geosphere-markers", []);
+const savedProgress = safeStorage.getJson("geosphere-progress", window.GeoSphereProgress.createProgress());
+const savedUnlocks = safeStorage.getJson("geosphere-achievement-unlocks", {});
+const savedDailyRecords = safeStorage.getJson("geosphere-daily-records", {});
 
 const stage = document.querySelector(".stage");
 
@@ -252,6 +255,11 @@ const state = {
   orientationTarget: null,
   freeMatrix: null,
   visibleWaterLabels: [],
+  progress: savedProgress && typeof savedProgress === "object" ? savedProgress : window.GeoSphereProgress.createProgress(),
+  achievementUnlocks: savedUnlocks && typeof savedUnlocks === "object" ? savedUnlocks : {},
+  dailyRecords: savedDailyRecords && typeof savedDailyRecords === "object" ? savedDailyRecords : {},
+  daily: null,
+  roundStartedAt: performance.now(),
 };
 
 function init() {
@@ -310,7 +318,7 @@ function bindEvents() {
       if (event.key.toLowerCase() === "s") state.flight.slow = true;
       if (event.key.toLowerCase() === "p" && state.mode === "airports" && !event.repeat) toggleFlightPause();
     }
-    if (!typing && event.key.toLowerCase() === "n" && !["free", "conquest", "puzzle"].includes(state.mode)) newRound(state.mode);
+    if (!typing && event.key.toLowerCase() === "n" && !["free", "conquest", "puzzle", "daily", "gallery"].includes(state.mode)) newRound(state.mode);
     if (!typing && event.key === "Enter" && state.answered) {
       const continueButton = modeContent.querySelector("#continue-round");
       if (continueButton) continueButton.click();
@@ -548,6 +556,7 @@ function newRound(mode) {
   const previousMode = state.mode;
   if (previousMode !== mode) resetModeSession(previousMode);
   state.mode = mode;
+  state.roundStartedAt = performance.now();
   globeHud.hidden = false;
   stage.dataset.mode = mode;
   state.answered = false;
@@ -577,8 +586,10 @@ function newRound(mode) {
   if (mode === "traverse") setupTraverse();
   if (mode === "conquest") setupConquest();
   if (mode === "puzzle") setupContinentPuzzle();
-  document.querySelector("#auto-next-control").hidden = ["free", "conquest", "puzzle"].includes(mode);
-  document.querySelector("#next-round").hidden = ["free", "conquest", "puzzle"].includes(mode);
+  if (mode === "daily") setupDailyChallenge();
+  if (mode === "gallery") setupFlagGallery();
+  document.querySelector("#auto-next-control").hidden = ["free", "conquest", "puzzle", "daily", "gallery"].includes(mode);
+  document.querySelector("#next-round").hidden = ["free", "conquest", "puzzle", "daily", "gallery"].includes(mode);
   if (usesGlobe(mode)) startGlobeLoop();
   else stopGlobeLoop();
   updateScore();
@@ -728,6 +739,261 @@ function setupFreeroam() {
   state.selected = null;
   renderFreeroamPanel();
   feedback.textContent = "Click a country to inspect it. Hold Ctrl while clicking another country to compare.";
+}
+
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function setupDailyChallenge() {
+  const dateKey = localDateKey();
+  modeKicker.textContent = "Daily Challenge";
+  challengeTitle.textContent = "Today's five-stop world tour";
+  feedback.textContent = "Your first completed attempt is the score that counts.";
+  const saved = window.GeoSphereProgress.dailyAttemptStatus(state.dailyRecords, dateKey);
+  if (saved.completed) {
+    renderDailyResult(saved.result);
+    return;
+  }
+  if (!state.daily || state.daily.dateKey !== dateKey) {
+    state.daily = {
+      dateKey,
+      challenge: window.GeoSphereProgress.createDailyChallenge(dateKey, countries),
+      index: 0,
+      score: 0,
+      hints: 0,
+      results: [],
+      startedAt: Date.now(),
+      roundStartedAt: performance.now(),
+      answered: false,
+    };
+  }
+  if (state.daily.answered) {
+    continueDailyChallenge();
+    return;
+  }
+  renderDailyRound();
+}
+
+function dailyCountryChoices(target, variant) {
+  const choices = [target];
+  let cursor = (countries.indexOf(target) + variant + 1) % countries.length;
+  const step = (variant % 23) + 7;
+  while (choices.length < 4) {
+    const candidate = countries[cursor % countries.length];
+    if (!choices.some((country) => sameCountry(country, candidate))) choices.push(candidate);
+    cursor = (cursor + step) % countries.length;
+  }
+  return choices
+    .map((country, index) => ({ country, order: (variant * (index + 3) + index * 17) % 101 }))
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => entry.country);
+}
+
+function dailyRoundPresentation(round, country) {
+  if (round.mode === "hunt") {
+    return {
+      prompt: `Which country has ${country.capital} as its capital?`,
+      visual: `<div class="daily-clue-card"><strong>Target briefing</strong><span>${country.region}</span></div>`,
+    };
+  }
+  if (round.mode === "flags") {
+    return {
+      prompt: "Which country uses this flag?",
+      visual: flagImage(country, "Daily Challenge flag"),
+    };
+  }
+  if (round.mode === "trivia") {
+    return {
+      prompt: `Which country matches this fact?`,
+      visual: `<div class="daily-clue-card"><strong>${country.population}</strong><span>Approximate population in ${country.region}</span></div>`,
+    };
+  }
+  if (round.mode === "outline") {
+    const rotation = round.variant % 360;
+    return {
+      prompt: "Which country has this rotated outline?",
+      visual: `<img class="daily-outline" src="${window.GeoSphereAssets.silhouette(country.iso2)}" alt="Rotated country outline" style="transform:rotate(${rotation}deg)">`,
+    };
+  }
+  return {
+    prompt: "Which country is described by this borderless view?",
+    visual: `<div class="daily-clue-card"><strong>${broadRegion(country)}</strong><span>${country.clue || `Located in ${country.region}.`}</span></div>`,
+  };
+}
+
+function renderDailyRound() {
+  const daily = state.daily;
+  const round = daily.challenge.rounds[daily.index];
+  const country = countries[round.countryIndex];
+  const mode = window.GeoSphereModes.get(round.mode);
+  const presentation = dailyRoundPresentation(round, country);
+  const choices = dailyCountryChoices(country, round.variant);
+  daily.hints = 0;
+  daily.answered = false;
+  daily.roundStartedAt = performance.now();
+  modeContent.innerHTML = `
+    <div class="daily-progress">
+      ${daily.challenge.rounds.map((_, index) => `<span class="${index < daily.index ? "complete" : index === daily.index ? "current" : ""}"></span>`).join("")}
+    </div>
+    <div class="daily-meta"><strong>Round ${daily.index + 1} of 5</strong><span>${mode.label}</span></div>
+    <div class="daily-visual">${presentation.visual}</div>
+    <h3 class="panel-title">${presentation.prompt}</h3>
+    <div class="answer-grid">
+      ${choices.map((choice) => `<button class="answer-button" data-daily-answer="${escapeAttribute(choice.name)}">${choice.name}</button>`).join("")}
+    </div>
+    <button class="mini-button" id="daily-hint">Hint</button>
+    <p class="panel-note" id="daily-hint-text">Hints used: 0</p>
+  `;
+  modeContent.querySelectorAll("[data-daily-answer]").forEach((button) => {
+    button.addEventListener("click", () => answerDailyRound(button.dataset.dailyAnswer));
+  });
+  modeContent.querySelector("#daily-hint").addEventListener("click", () => {
+    if (daily.answered) return;
+    daily.hints = Math.min(2, daily.hints + 1);
+    const hint = daily.hints === 1
+      ? `The country begins with "${country.name[0]}".`
+      : `Its capital is ${country.capital}.`;
+    modeContent.querySelector("#daily-hint-text").textContent = `Hints used: ${daily.hints}. ${hint}`;
+    if (daily.hints === 2) modeContent.querySelector("#daily-hint").disabled = true;
+  });
+}
+
+function answerDailyRound(answer) {
+  const daily = state.daily;
+  if (!daily || daily.answered) return;
+  const round = daily.challenge.rounds[daily.index];
+  const country = countries[round.countryIndex];
+  const correct = rawCountryKey(answer) === rawCountryKey(country.name);
+  const elapsedMs = performance.now() - daily.roundStartedAt;
+  const points = window.GeoSphereProgress.scoreDailyRound({
+    correct,
+    hints: daily.hints,
+    elapsedMs,
+  });
+  daily.answered = true;
+  daily.score += points;
+  daily.results.push({
+    mode: round.mode,
+    country: country.name,
+    correct,
+    points,
+    hints: daily.hints,
+    elapsedMs: Math.round(elapsedMs),
+  });
+  modeContent.querySelectorAll("[data-daily-answer]").forEach((button) => {
+    button.disabled = true;
+    if (rawCountryKey(button.dataset.dailyAnswer) === rawCountryKey(country.name)) button.classList.add("correct");
+    else if (button.dataset.dailyAnswer === answer) button.classList.add("wrong");
+  });
+  modeContent.querySelector("#daily-hint").disabled = true;
+  recordProgressEvent({
+    type: "round-completed",
+    mode: round.mode,
+    correct,
+    points: 0,
+    elapsedMs,
+    hints: daily.hints,
+    streak: correct ? 1 : 0,
+  });
+  setFeedback(
+    correct ? `Correct. +${points} daily points.` : `The answer was ${country.name}.`,
+    correct,
+  );
+  const button = document.createElement("button");
+  button.className = "continue-button";
+  button.textContent = daily.index === 4 ? "Finish challenge" : "Continue to next stop";
+  button.addEventListener("click", continueDailyChallenge);
+  modeContent.appendChild(button);
+}
+
+function continueDailyChallenge() {
+  const daily = state.daily;
+  if (!daily?.answered) return;
+  if (daily.index < 4) {
+    daily.index += 1;
+    renderDailyRound();
+    return;
+  }
+  const result = {
+    completed: true,
+    score: daily.score,
+    correct: daily.results.filter((round) => round.correct).length,
+    durationMs: Date.now() - daily.startedAt,
+    hints: daily.results.reduce((sum, round) => sum + round.hints, 0),
+    results: daily.results,
+    completedAt: new Date().toISOString(),
+  };
+  state.dailyRecords = window.GeoSphereProgress.saveDailyResult(state.dailyRecords, daily.dateKey, result);
+  safeStorage.setJson("geosphere-daily-records", state.dailyRecords);
+  recordProgressEvent({ type: "daily-completed", score: result.score });
+  renderDailyResult(result);
+}
+
+function renderDailyResult(result) {
+  modeContent.innerHTML = `
+    <h3 class="panel-title">Daily Challenge complete</h3>
+    <div class="trivia-card">
+      <span>Today's score</span>
+      <strong>${result.score} / 500</strong>
+      <small>${result.correct} correct | ${formatDuration(result.durationMs)} | ${result.hints} hints</small>
+    </div>
+    <div class="daily-result-list">
+      ${(result.results || []).map((round, index) => `
+        <div class="daily-result-row">
+          <strong>${index + 1}</strong>
+          <span>${window.GeoSphereModes.get(round.mode)?.label || round.mode}<br><small>${round.country}</small></span>
+          <strong>${round.points}</strong>
+        </div>
+      `).join("")}
+    </div>
+    <p class="panel-note">Your scored attempt for ${localDateKey()} is recorded. A new challenge arrives tomorrow.</p>
+  `;
+  feedback.textContent = "Daily result saved locally.";
+  updateScore();
+}
+
+function formatDuration(milliseconds) {
+  const totalSeconds = Math.max(0, Math.round((milliseconds || 0) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function setupFlagGallery() {
+  modeKicker.textContent = "Flag Gallery";
+  challengeTitle.textContent = "Achievement collection";
+  const achievements = window.GeoSphereProgress.achievements;
+  const unlockedCount = achievements.filter((achievement) => state.achievementUnlocks[achievement.id]).length;
+  modeContent.innerHTML = `
+    <div class="gallery-summary">
+      <strong>${unlockedCount} / ${achievements.length} flags unlocked</strong>
+      <span>Harder achievements reveal rarer flags</span>
+    </div>
+    <div class="gallery-grid">
+      ${achievements.map((achievement) => {
+        const unlockedAt = state.achievementUnlocks[achievement.id];
+        const progress = window.GeoSphereProgress.achievementProgress(achievement, state.progress);
+        return `
+          <article class="gallery-card ${unlockedAt ? "" : "locked"}">
+            <div class="gallery-flag">
+              ${unlockedAt ? `<img src="${window.GeoSphereAssets.flag(achievement.flagIso2)}" alt="Flag of ${achievement.flagName}">` : "<span>?</span>"}
+            </div>
+            <span class="rarity">${achievement.rarity}</span>
+            <h4>${unlockedAt ? achievement.flagName : achievement.name}</h4>
+            <p>${achievement.description}</p>
+            <small>${unlockedAt ? `Unlocked ${new Date(unlockedAt).toLocaleDateString()}` : `${Math.min(progress.value, progress.target)} / ${progress.target}`}</small>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+  feedback.textContent = unlockedCount
+    ? "Unlocked flags are permanently stored in this browser."
+    : "Complete scored rounds to unlock your first flag.";
 }
 
 function setupHunt() {
@@ -3136,11 +3402,62 @@ function award(points, success) {
   stat.streak = success ? stat.streak + 1 : 0;
   stat.best = Math.max(stat.best, stat.score);
   safeStorage.set(`geosphere-best-${state.mode}`, stat.best);
+  if (!["free", "daily", "gallery"].includes(state.mode)) {
+    recordProgressEvent({
+      type: "round-completed",
+      mode: state.mode,
+      correct: success,
+      points: Math.max(0, points),
+      elapsedMs: performance.now() - state.roundStartedAt,
+      hints: currentModeHintCount(),
+      streak: stat.streak,
+    });
+  }
   updateScore();
+}
+
+function currentModeHintCount() {
+  if (state.mode === "hunt") return state.huntHints;
+  if (state.mode === "outline") return state.outlineHintLevel || 0;
+  if (state.mode === "viewfinder") return state.viewHints;
+  if (state.mode === "traverse") return state.traverse.hints;
+  if (state.mode === "language") return state.languageHint;
+  if (state.mode === "flags") return state.flagReveal;
+  return 0;
+}
+
+function recordProgressEvent(event) {
+  state.progress = window.GeoSphereProgress.applyProgressEvent(state.progress, event);
+  const evaluated = window.GeoSphereProgress.evaluateAchievements(
+    state.progress,
+    state.achievementUnlocks,
+  );
+  state.achievementUnlocks = evaluated.unlocks;
+  safeStorage.setJson("geosphere-progress", state.progress);
+  safeStorage.setJson("geosphere-achievement-unlocks", state.achievementUnlocks);
+  if (evaluated.newUnlocks.length) showAchievementUnlocks(evaluated.newUnlocks);
+}
+
+function showAchievementUnlocks(achievements) {
+  const stack = document.querySelector("#achievement-stack");
+  achievements.forEach((achievement) => {
+    const toast = document.createElement("div");
+    toast.className = "achievement-toast";
+    toast.innerHTML = `
+      <strong>Achievement unlocked: ${achievement.name}</strong>
+      <span>${achievement.flagName} added to your Flag Gallery.</span>
+    `;
+    stack.appendChild(toast);
+    window.setTimeout(() => toast.remove(), 5200);
+  });
 }
 
 function updateScore() {
   const stat = state.gameScores[state.mode];
+  if (state.mode === "daily" && state.daily) {
+    stat.score = state.daily.score;
+    stat.best = Math.max(stat.best, stat.score);
+  }
   scoreEl.textContent = stat.score;
   streakEl.textContent = stat.streak;
   bestEl.textContent = stat.best;

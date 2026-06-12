@@ -8,6 +8,7 @@
       support: "app-support.js",
       content: "game-content.js",
       modes: "game-modes.js",
+      progress: "game-progress.js",
       flightRendering: "flight-rendering.js",
       globeRendering: "globe-rendering.js",
       data: Object.freeze([
@@ -41,6 +42,7 @@
         this.scripts.support,
         this.scripts.content,
         this.scripts.modes,
+        this.scripts.progress,
         this.scripts.flightRendering,
         this.scripts.globeRendering,
         ...this.scripts.data,

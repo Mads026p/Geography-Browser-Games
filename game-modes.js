@@ -1,5 +1,6 @@
 (function exposeGeoSphereModes(globalScope) {
   const definitions = [
+    { id: "daily", code: "DC", label: "Daily Challenge", description: "One world tour each day", usesGlobe: false },
     { id: "free", code: "FR", label: "Freeroam", description: "Inspect and compare countries", usesGlobe: true },
     { id: "hunt", code: "GH", label: "Globe Hunt", description: "Find countries on the globe", usesGlobe: true, daily: true },
     { id: "distance", code: "DD", label: "Distance Duel", description: "Guess country distances", usesGlobe: true },
@@ -12,6 +13,7 @@
     { id: "traverse", code: "CT", label: "Country Traversing", description: "Build a route across land borders", usesGlobe: true },
     { id: "conquest", code: "GC", label: "Globe Conquest", description: "Turn-based geographic strategy", usesGlobe: true },
     { id: "puzzle", code: "CP", label: "Continent Puzzle", description: "Place countries into continents", usesGlobe: false },
+    { id: "gallery", code: "FG", label: "Flag Gallery", description: "View achievement rewards", usesGlobe: false },
   ].map(Object.freeze);
 
   const byId = new Map(definitions.map((mode) => [mode.id, mode]));
