@@ -3,7 +3,14 @@ import test from "node:test";
 
 import globeRendering from "../globe-rendering.js";
 
-const { createViewCacheKey, placeLabel, renderPolicy, rectanglesOverlap } = globeRendering;
+const {
+  clipToVisibleHemisphere,
+  createViewCacheKey,
+  expandHorizonPoint,
+  placeLabel,
+  renderPolicy,
+  rectanglesOverlap,
+} = globeRendering;
 
 test("render policy reduces nonessential work only during direct interaction", () => {
   assert.deepEqual(renderPolicy({ dragging: false, zooming: false }), {
@@ -15,12 +22,37 @@ test("render policy reduces nonessential work only during direct interaction", (
   });
   assert.deepEqual(renderPolicy({ dragging: true, zooming: false }), {
     interacting: true,
-    drawLabels: false,
+    drawLabels: true,
     drawMinorBoundaries: false,
     drawCountryBoundaries: true,
     terrainDetail: "coarse",
   });
   assert.equal(renderPolicy({ dragging: false, zooming: true }).interacting, true);
+});
+
+test("hemisphere clipping inserts normalized points on the horizon", () => {
+  const clipped = clipToVisibleHemisphere([
+    { x: 0, y: 0.8, z: 0.6 },
+    { x: 0.8, y: 0, z: -0.6 },
+    { x: -0.8, y: 0, z: -0.6 },
+  ]);
+
+  assert.equal(clipped.length, 3);
+  const horizonPoints = clipped.filter((point) => point.z === 0);
+  assert.equal(horizonPoints.length, 2);
+  horizonPoints.forEach((point) => {
+    assert.ok(Math.abs(Math.hypot(point.x, point.y) - 1) < 1e-9);
+  });
+});
+
+test("horizon fill points expand by a pixel before the globe circle clips them", () => {
+  const expanded = expandHorizonPoint({ x: 0.6, y: 0.8, z: 0 }, 200, 1);
+  assert.ok(Math.abs(Math.hypot(expanded.x, expanded.y) - 1.005) < 1e-9);
+  assert.deepEqual(expandHorizonPoint({ x: 0.6, y: 0.8, z: 0.2 }, 200, 1), {
+    x: 0.6,
+    y: 0.8,
+    z: 0.2,
+  });
 });
 
 test("view cache keys are stable for the same view and change with projection state", () => {

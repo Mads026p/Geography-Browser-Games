@@ -3,11 +3,46 @@
     const interacting = Boolean(dragging || zooming);
     return {
       interacting,
-      drawLabels: !interacting,
+      drawLabels: true,
       drawMinorBoundaries: !interacting,
       drawCountryBoundaries: true,
       terrainDetail: interacting ? "coarse" : "fine",
     };
+  }
+
+  function normalizedHorizonIntersection(current, next, horizon = 0) {
+    const denominator = next.z - current.z;
+    const t = denominator === 0 ? 0 : (horizon - current.z) / denominator;
+    const x = current.x + (next.x - current.x) * t;
+    const y = current.y + (next.y - current.y) * t;
+    const length = Math.hypot(x, y) || 1;
+    const horizonRadius = Math.sqrt(Math.max(0, 1 - horizon * horizon));
+    return {
+      x: (x / length) * horizonRadius,
+      y: (y / length) * horizonRadius,
+      z: horizon,
+    };
+  }
+
+  function clipToVisibleHemisphere(points, horizon = 0) {
+    const clipped = [];
+    for (let index = 0; index < points.length; index += 1) {
+      const current = points[index];
+      const next = points[(index + 1) % points.length];
+      const currentVisible = current.z >= horizon;
+      const nextVisible = next.z >= horizon;
+      if (currentVisible) clipped.push(current);
+      if (currentVisible !== nextVisible) {
+        clipped.push(normalizedHorizonIntersection(current, next, horizon));
+      }
+    }
+    return clipped;
+  }
+
+  function expandHorizonPoint(point, radius, overlapPixels = 0.85) {
+    if (Math.abs(point.z) > 1e-9 || !Number.isFinite(radius) || radius <= 0) return point;
+    const scale = 1 + Math.max(0, overlapPixels) / radius;
+    return { x: point.x * scale, y: point.y * scale, z: point.z };
   }
 
   function rounded(value) {
@@ -42,7 +77,9 @@
   }
 
   const api = Object.freeze({
+    clipToVisibleHemisphere,
     createViewCacheKey,
+    expandHorizonPoint,
     placeLabel,
     rectanglesOverlap,
     renderPolicy,

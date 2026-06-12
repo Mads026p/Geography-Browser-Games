@@ -1298,7 +1298,7 @@ function featureVisibleInViewfinder(feature) {
   const rect = canvas.getBoundingClientRect();
   const { cx, cy, radius } = globeMetrics();
   return feature.renderTriangles.some((triangle) => {
-    const clipped = clipRingToVisible(triangle.map(cameraVector));
+    const clipped = window.GeoSphereGlobeRendering.clipToVisibleHemisphere(triangle.map(cameraVector));
     if (clipped.length < 3) return false;
     const points = clipped.map((point) => projectCameraPoint(point, cx, cy, radius));
     const minX = Math.min(...points.map((point) => point.x));
@@ -4001,7 +4001,7 @@ function drawTerrainSurface(feature, cx, cy, radius) {
     : feature.terrainTiles;
   visibleTilesFor(terrainTiles, cx, cy, radius).forEach((tile) => {
     tile.triangles.forEach((triangle) => {
-      const clipped = clipRingToVisible(triangle.map(cameraVector));
+      const clipped = window.GeoSphereGlobeRendering.clipToVisibleHemisphere(triangle.map(cameraVector));
       if (clipped.length < 3) return;
       const center = normalizeVector(triangle.reduce(
         (sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y, z: sum.z + point.z }),
@@ -4010,7 +4010,7 @@ function drawTerrainSurface(feature, cx, cy, radius) {
       const geo = vectorToLatLon(center);
       ctx.beginPath();
       clipped.forEach((point, index) => {
-        const projected = projectCameraPoint(point, cx, cy, radius);
+        const projected = projectSurfacePoint(point, cx, cy, radius);
         if (!index) ctx.moveTo(projected.x, projected.y);
         else ctx.lineTo(projected.x, projected.y);
       });
@@ -4396,10 +4396,10 @@ function drawFeatureSurface(feature, cx, cy, radius) {
   const tiles = state.mode === "traverse" ? feature.metropolitanRenderTiles : feature.renderTiles;
   visibleTilesFor(tiles, cx, cy, radius).forEach((tile) => {
     tile.triangles.forEach((triangle) => {
-      const clipped = clipRingToVisible(triangle.map(cameraVector));
+      const clipped = window.GeoSphereGlobeRendering.clipToVisibleHemisphere(triangle.map(cameraVector));
       if (clipped.length < 3) return;
       clipped.forEach((point, index) => {
-        const projected = projectCameraPoint(point, cx, cy, radius);
+        const projected = projectSurfacePoint(point, cx, cy, radius);
         if (index === 0) ctx.moveTo(projected.x, projected.y);
         else ctx.lineTo(projected.x, projected.y);
       });
@@ -4467,12 +4467,13 @@ function drawFeatureBoundarySegments(feature, cx, cy, radius, highlighted, pulse
         }
         const a = points[i];
         const b = points[i + 1];
-        const aVisible = a.z >= 0;
-        const bVisible = b.z >= 0;
+        const borderHorizon = 0.0025;
+        const aVisible = a.z >= borderHorizon;
+        const bVisible = b.z >= borderHorizon;
         if (!aVisible && !bVisible) continue;
 
-        const start = projectCameraPoint(aVisible ? a : intersectHorizon(a, b, 0), cx, cy, radius);
-        const end = projectCameraPoint(bVisible ? b : intersectHorizon(a, b, 0), cx, cy, radius);
+        const start = projectCameraPoint(aVisible ? a : intersectHorizon(a, b, borderHorizon), cx, cy, radius);
+        const end = projectCameraPoint(bVisible ? b : intersectHorizon(a, b, borderHorizon), cx, cy, radius);
         ctx.beginPath();
         ctx.moveTo(start.x, start.y);
         ctx.lineTo(end.x, end.y);
@@ -4674,7 +4675,7 @@ function drawElevationOverlay(cx, cy, radius) {
     if (!tiles) return;
     visibleTilesFor(tiles, cx, cy, radius).forEach((tile) => {
       tile.triangles.forEach((triangle) => {
-        const clipped = clipRingToVisible(triangle.map(cameraVector));
+        const clipped = window.GeoSphereGlobeRendering.clipToVisibleHemisphere(triangle.map(cameraVector));
         if (clipped.length < 3) return;
         const center = normalizeVector(triangle.reduce(
           (sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y, z: sum.z + point.z }),
@@ -4691,7 +4692,7 @@ function drawElevationOverlay(cx, cy, radius) {
           : mixColor("#e0a05b", "#7a3d20", (elevation - 0.58) / 0.42);
         ctx.beginPath();
         clipped.forEach((point, index) => {
-          const projected = projectCameraPoint(point, cx, cy, radius);
+          const projected = projectSurfacePoint(point, cx, cy, radius);
           if (!index) ctx.moveTo(projected.x, projected.y);
           else ctx.lineTo(projected.x, projected.y);
         });
@@ -4864,21 +4865,9 @@ function projectCameraPoint(point, cx, cy, radius) {
   };
 }
 
-function clipRingToVisible(points) {
-  const clipped = [];
-  const horizon = 0;
-
-  for (let i = 0; i < points.length; i += 1) {
-    const current = points[i];
-    const next = points[(i + 1) % points.length];
-    const currentVisible = current.z >= horizon;
-    const nextVisible = next.z >= horizon;
-
-    if (currentVisible) clipped.push(current);
-    if (currentVisible !== nextVisible) clipped.push(intersectHorizon(current, next, horizon));
-  }
-
-  return clipped;
+function projectSurfacePoint(point, cx, cy, radius) {
+  const expanded = window.GeoSphereGlobeRendering.expandHorizonPoint(point, radius);
+  return projectCameraPoint(expanded, cx, cy, radius);
 }
 
 function intersectHorizon(a, b, horizon) {
