@@ -3872,7 +3872,6 @@ function drawCountries(cx, cy, radius) {
   ctx.clip();
 
   if (state.mode === "viewfinder") {
-    drawBaseLandLayer(worldMap, cx, cy, radius);
     worldMap.forEach((feature) => drawTerrainSurface(feature, cx, cy, radius));
     if (state.viewShowBorders) {
       worldMap.forEach((feature) => {
@@ -3910,7 +3909,6 @@ function drawCountries(cx, cy, radius) {
   const landPolicy = window.GeoSphereGlobeRendering.landRenderPolicy({
     showTimezones: state.mode === "free" && state.showTimezones,
   });
-  const renderEntries = [];
   worldMap.forEach((feature) => {
     if (
       state.mode === "traverse" &&
@@ -3954,7 +3952,8 @@ function drawCountries(cx, cy, radius) {
       state.answered &&
       !(state.traverse.shortestShown ? isTraverseShortestPath : isTraversePlayerPath);
 
-    const fillStyle = landPolicy.countryFillOverride || conquestColor || (isTraverseShortestPath
+    ctx.globalAlpha = isTraverseHint ? 0.08 : 1;
+    ctx.fillStyle = landPolicy.countryFillOverride || conquestColor || (isTraverseShortestPath
       ? "#b58cff"
       : isTraversePlayerPath
         ? "#49d6c8"
@@ -3969,26 +3968,8 @@ function drawCountries(cx, cy, radius) {
                 : isHover
                   ? "#ffb066"
                   : base);
-    renderEntries.push({
-      feature,
-      fillStyle,
-      highlighted,
-      isTraverseHint,
-    });
-  });
-
-  if (landPolicy.drawBaseLand) {
-    drawBaseLandLayer(renderEntries.map((entry) => entry.feature), cx, cy, radius, landPolicy);
-  }
-
-  renderEntries.forEach(({ feature, fillStyle, isTraverseHint }) => {
-    ctx.globalAlpha = isTraverseHint ? 0.08 : 1;
-    ctx.fillStyle = fillStyle;
     drawFeatureSurface(feature, cx, cy, radius);
-  });
-  ctx.globalAlpha = 1;
-
-  renderEntries.forEach(({ feature, highlighted, isTraverseHint }) => {
+    ctx.globalAlpha = 1;
     if (state.renderPolicy.drawCountryBoundaries || highlighted) {
       drawFeatureBoundarySegments(feature, cx, cy, radius, highlighted, isTraverseHint);
     }
@@ -4415,26 +4396,6 @@ function drawAirportCompass(width, height) {
 
 function drawFeatureSurface(feature, cx, cy, radius) {
   ctx.beginPath();
-  traceFeatureSurface(feature, cx, cy, radius);
-  ctx.fill();
-}
-
-function drawBaseLandLayer(features, cx, cy, radius, policy = window.GeoSphereGlobeRendering.landRenderPolicy()) {
-  if (!features.length) return;
-  ctx.save();
-  ctx.beginPath();
-  features.forEach((feature) => traceFeatureSurface(feature, cx, cy, radius));
-  ctx.fillStyle = policy.baseLandColor;
-  ctx.strokeStyle = policy.baseLandColor;
-  ctx.lineWidth = policy.baseStrokeWidth;
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-}
-
-function traceFeatureSurface(feature, cx, cy, radius) {
   const tiles = state.mode === "traverse" ? feature.metropolitanRenderTiles : feature.renderTiles;
   visibleTilesFor(tiles, cx, cy, radius).forEach((tile) => {
     tile.triangles.forEach((triangle) => {
@@ -4448,6 +4409,7 @@ function traceFeatureSurface(feature, cx, cy, radius) {
       ctx.closePath();
     });
   });
+  ctx.fill();
 }
 
 function visibleTilesFor(tiles, cx, cy, radius) {

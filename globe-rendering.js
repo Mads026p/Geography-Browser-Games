@@ -11,12 +11,8 @@
   }
 
   function landRenderPolicy({ showTimezones = false } = {}) {
-    const neutralLand = "#68717a";
     return {
-      drawBaseLand: true,
-      baseLandColor: showTimezones ? neutralLand : "#53685b",
-      baseStrokeWidth: 1.35,
-      countryFillOverride: showTimezones ? neutralLand : null,
+      countryFillOverride: showTimezones ? "#68717a" : null,
     };
   }
 

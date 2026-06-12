@@ -56,16 +56,12 @@ test("horizon fill points expand by a pixel before the globe circle clips them",
   });
 });
 
-test("land rendering underpaints country fills and neutralizes timezone surfaces", () => {
+test("timezone rendering neutralizes country surfaces without an extra land pass", () => {
   const normal = landRenderPolicy();
-  assert.equal(normal.drawBaseLand, true);
-  assert.equal(normal.countryFillOverride, null);
-  assert.ok(normal.baseStrokeWidth >= 1);
+  assert.deepEqual(normal, { countryFillOverride: null });
 
   const timezones = landRenderPolicy({ showTimezones: true });
-  assert.equal(timezones.drawBaseLand, true);
-  assert.equal(timezones.countryFillOverride, timezones.baseLandColor);
-  assert.match(timezones.baseLandColor, /^#[0-9a-f]{6}$/i);
+  assert.match(timezones.countryFillOverride, /^#[0-9a-f]{6}$/i);
 });
 
 test("view cache keys are stable for the same view and change with projection state", () => {
