@@ -10,6 +10,16 @@
     };
   }
 
+  function landRenderPolicy({ showTimezones = false } = {}) {
+    const neutralLand = "#68717a";
+    return {
+      drawBaseLand: true,
+      baseLandColor: showTimezones ? neutralLand : "#53685b",
+      baseStrokeWidth: 1.35,
+      countryFillOverride: showTimezones ? neutralLand : null,
+    };
+  }
+
   function normalizedHorizonIntersection(current, next, horizon = 0) {
     const denominator = next.z - current.z;
     const t = denominator === 0 ? 0 : (horizon - current.z) / denominator;
@@ -80,6 +90,7 @@
     clipToVisibleHemisphere,
     createViewCacheKey,
     expandHorizonPoint,
+    landRenderPolicy,
     placeLabel,
     rectanglesOverlap,
     renderPolicy,
